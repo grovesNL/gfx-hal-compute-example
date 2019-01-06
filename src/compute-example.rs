@@ -498,15 +498,11 @@ impl ComputeApplication {
     }
 
     unsafe fn execute_compute(&mut self) {
-        let submission: queue::Submission<
-            &[command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary>],
-            &[<back::Backend as Backend>::Semaphore, pso::PipelineStage],
-            &[<back::Backend as Backend>::Semaphore]> =
-                queue::Submission {
-                    command_buffers: &[self.command_buffer],
-                    wait_semaphores: vec![],
-                    signal_semaphores: vec![],
-                };
+        let submission = queue::Submission {
+            command_buffers: std::iter::once(&self.command_buffer),
+            wait_semaphores: std::iter::empty(),
+            signal_semaphores: std::iter::empty(),
+        };
 
         let calculation_completed_fence = self.device.create_fence(false).unwrap();
         self.command_queues[0].submit(submission, Some(&calculation_completed_fence));
