@@ -8,80 +8,91 @@ extern crate gfx_backend_vulkan as back;
 extern crate gfx_hal as hal;
 extern crate glsl_to_spirv;
 extern crate winit;
+extern crate rand;
 
 use hal::{
-    command, format, image, pass, pool, pso, queue, window, Adapter, Backbuffer, Backend,
-    Capability, Device, Gpu, Compute, Instance, PhysicalDevice, Primitive, QueueFamily, Surface,
-    Swapchain, SwapchainConfig, Features, memory, buffer
+    command, pool, pso, queue, Adapter, Backend,
+    Capability, Device, Gpu, Compute, Instance, PhysicalDevice, QueueFamily, Features, memory, buffer, DescriptorPool,
 };
-use std::io::Read;
 use std::{mem, ptr};
 
 // dumb SPIRV bytes
-static RESERVED_ID: u8 = 0;
-static FUNC_ID: u8 = 1;
-static IN_ID: u8 = 2;
-static OUT_ID: u8 = 3;
-static GLOBAL_INVOCATION_ID: u8 = 4;
-static VOID_TYPE_ID: u8 = 5;
-static FUNC_TYPE_ID: u8 = 6;
-static INT_TYPE_ID: u8 = 7;
-static INT_ARRAY_TYPE_ID: u8 = 8;
-static STRUCT_ID: u8 = 9;
-static POINTER_TYPE_ID: u8 = 10;
-static ELEMENT_POINTER_TYPE_ID: u8 = 11;
-static INT_VECTOR_TYPE_ID: u8 = 12;
-static INT_VECTOR_POINTER_TYPE_ID: u8 = 13;
-static INT_POINTER_TYPE_ID: u8 = 14;
-static CONSTANT_ZERO_ID: u8 = 15;
-static CONSTANT_ARRAY_LENGTH_ID: u8 = 16;
-static LABEL_ID: u8 = 17;
-static IN_ELEMENT_ID: u8 = 18;
-static OUT_ELEMENT_ID: u8 = 19;
-static GLOBAL_INVOCATION_X_ID: u8 =20;
-static GLOBAL_INVOCATION_X_PTR_ID: u8 =21;
-static TEMP_LOADED_ID: u8 = 22;
-static BOUND: u8 = 23;
-static INPUT: u8 = 1;
-static UNIFORM: u8 = 2;
-static BUFFER_BLOCK: u8 = 3;
-static ARRAY_STRIDE: u8 = 6;
-static BUILTIN: u8 = 11;
-static BINDING: u8 = 33;
-static OFFSET: u8 = 35;
-static DESCRIPTOR_SET: u8 = 34;
-static GLOBAL_INVOCATION: u8 = 28;
-static OP_TYPE_VOID: u8 = 19;
-static OP_TYPE_FUNCTION: u8 = 33;
-static OP_TYPE_INT: u8 = 21;
-static OP_TYPE_VECTOR: u8 = 23;
-static OP_TYPE_ARRAY: u8 = 28;
-static OP_TYPE_STRUCT: u8 = 30;
-static OP_TYPE_POINTER: u8 = 32;
-static OP_VARIABLE: u8 = 59;
-static OP_DECORATE: u8 = 71;
-static OP_MEMBER_DECORATE: u8 = 72;
-static OP_FUNCTION: u8 = 54;
-static OP_LABEL: u8 = 248;
-static OP_ACCESS_CHAIN: u8 = 65;
-static OP_CONSTANT: u8 = 43;
-static OP_LOAD: u8 = 61;
-static OP_STORE: u8 = 62;
-static OP_RETURN: u8 = 253;
-static OP_FUNCTION_END: u8 = 56;
-static OP_CAPABILITY: u8 = 17;
-static OP_MEMORY_MODEL: u8 = 14;
-static OP_ENTRY_POINT: u8 = 15;
-static OP_EXECUTION_MODE: u8 = 16;
-static OP_COMPOSITE_EXTRACT: u8 = 81;
+static RESERVED_ID: i32 = 0;
+static FUNC_ID: i32 = 1;
+static IN_ID: i32 = 2;
+static OUT_ID: i32 = 3;
+static GLOBAL_INVOCATION_ID: i32 = 4;
+static VOID_TYPE_ID: i32 = 5;
+static FUNC_TYPE_ID: i32 = 6;
+static INT_TYPE_ID: i32 = 7;
+static INT_ARRAY_TYPE_ID: i32 = 8;
+static STRUCT_ID: i32 = 9;
+static POINTER_TYPE_ID: i32 = 10;
+static ELEMENT_POINTER_TYPE_ID: i32 = 11;
+static INT_VECTOR_TYPE_ID: i32 = 12;
+static INT_VECTOR_POINTER_TYPE_ID: i32 = 13;
+static INT_POINTER_TYPE_ID: i32 = 14;
+static CONSTANT_ZERO_ID: i32 = 15;
+static CONSTANT_ARRAY_LENGTH_ID: i32 = 16;
+static LABEL_ID: i32 = 17;
+static IN_ELEMENT_ID: i32 = 18;
+static OUT_ELEMENT_ID: i32 = 19;
+static GLOBAL_INVOCATION_X_ID: i32 =20;
+static GLOBAL_INVOCATION_X_PTR_ID: i32 =21;
+static TEMP_LOADED_ID: i32 = 22;
+static BOUND: i32 = 23;
+static INPUT: i32 = 1;
+static UNIFORM: i32 = 2;
+static BUFFER_BLOCK: i32 = 3;
+static ARRAY_STRIDE: i32 = 6;
+static BUILTIN: i32 = 11;
+static BINDING: i32 = 33;
+static OFFSET: i32 = 35;
+static DESCRIPTOR_SET: i32 = 34;
+static GLOBAL_INVOCATION: i32 = 28;
+static OP_TYPE_VOID: i32 = 19;
+static OP_TYPE_FUNCTION: i32 = 33;
+static OP_TYPE_INT: i32 = 21;
+static OP_TYPE_VECTOR: i32 = 23;
+static OP_TYPE_ARRAY: i32 = 28;
+static OP_TYPE_STRUCT: i32 = 30;
+static OP_TYPE_POINTER: i32 = 32;
+static OP_VARIABLE: i32 = 59;
+static OP_DECORATE: i32 = 71;
+static OP_MEMBER_DECORATE: i32 = 72;
+static OP_FUNCTION: i32 = 54;
+static OP_LABEL: i32 = 248;
+static OP_ACCESS_CHAIN: i32 = 65;
+static OP_CONSTANT: i32 = 43;
+static OP_LOAD: i32 = 61;
+static OP_STORE: i32 = 62;
+static OP_RETURN: i32 = 253;
+static OP_FUNCTION_END: i32 = 56;
+static OP_CAPABILITY: i32 = 17;
+static OP_MEMORY_MODEL: i32 = 14;
+static OP_ENTRY_POINT: i32 = 15;
+static OP_EXECUTION_MODE: i32 = 16;
+static OP_COMPOSITE_EXTRACT: i32 = 81;
+
+// from OmniViral (Zakarum)
+pub fn cast_vec<T>(mut vec: Vec<T>) -> Vec<u8> {
+    let raw_len = mem::size_of::<T>()*vec.len();
+    let len = raw_len;
+
+    let cap = mem::size_of::<T>()*vec.capacity();
+
+    let ptr = vec.as_mut_ptr();
+    mem::forget(vec);
+    unsafe { Vec::from_raw_parts(ptr as _, len, cap) }
+}
 
 
 fn main() {
     env_logger::init();
     unsafe {
         let mut application = ComputeApplication::init();
-        application.execute_calculation();
-        appliaction.check_calculation();
+        application.execute_compute();
+        application.check_result();
         application.clean_up();
     }
 }
@@ -100,6 +111,7 @@ impl QueueFamilyIds {
 struct ComputeApplication {
     command_buffer: command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary>,
     command_pool: pool::CommandPool<back::Backend, Compute>,
+    descriptor_sets: Vec<<back::Backend as Backend>::DescriptorSet>,
     compute_pipeline: <back::Backend as Backend>::ComputePipeline,
     descriptor_set_layout: <back::Backend as Backend>::DescriptorSetLayout,
     pipeline_layout: <back::Backend as Backend>::PipelineLayout,
@@ -107,7 +119,8 @@ struct ComputeApplication {
     out_buffer: <back::Backend as Backend>::Buffer,
     payload: *mut u8,
     in_buffer: <back::Backend as Backend>::Buffer,
-    buffer_size: usize,
+    buffer_size: u32,
+    buffer_length: u32,
     command_queues: Vec<queue::CommandQueue<back::Backend, Compute>>,
     device: <back::Backend as Backend>::Device,
     _adapter: Adapter<back::Backend>,
@@ -121,21 +134,26 @@ impl ComputeApplication {
         let (device, command_queues, queue_type, qf_id) =
             ComputeApplication::create_device_with_compute_queue(&mut adapter);
 
-        let (buffer_size, in_buffer, payload, out_buffer, result) = ComputeApplication::create_io_buffers(&device);
+        let (buffer_length, buffer_size, in_buffer, payload, out_buffer, result) = ComputeApplication::create_io_buffers(&mut adapter, &device);
         let (descriptor_set_layout, pipeline_layout, compute_pipeline) =
-            ComputeApplication::create_compute_pipeline(&device);
+            ComputeApplication::create_compute_pipeline(buffer_length, &device);
+
+        let descriptor_sets = ComputeApplication::set_up_descriptor_sets(&device, &descriptor_set_layout, buffer_size, &in_buffer, &out_buffer);
 
         let mut command_pool =
             ComputeApplication::create_command_pool(&device, queue_type, qf_id);
         let command_buffer = ComputeApplication::create_command_buffer(
             buffer_size,
             &mut command_pool,
+            &descriptor_sets,
+            &pipeline_layout,
             &compute_pipeline,
         );
 
         ComputeApplication {
             command_buffer,
             command_pool,
+            descriptor_sets,
             compute_pipeline,
             descriptor_set_layout,
             pipeline_layout,
@@ -144,6 +162,7 @@ impl ComputeApplication {
             payload,
             in_buffer,
             buffer_size,
+            buffer_length,
             command_queues,
             device,
             _adapter: adapter,
@@ -152,7 +171,7 @@ impl ComputeApplication {
     }
 
     fn create_instance() -> back::Instance {
-        back::Instance::create(WINDOW_NAME, 1)
+        back::Instance::create("compute-example", 1)
     }
 
     fn find_queue_families(adapter: &Adapter<back::Backend>) -> QueueFamilyIds {
@@ -199,7 +218,6 @@ impl ComputeApplication {
             .find(|family| {
                 Compute::supported_by(family.queue_type())
                     && family.max_queues() > 0
-                    && surface.supports_queue_family(family)
             })
             .expect("Could not find a queue family supporting graphics.");
 
@@ -222,20 +240,20 @@ impl ComputeApplication {
         (device, command_queues, family.queue_type(), family.id())
     }
 
-    unsafe fn create_io_buffers(device: &<back::Backend as Backend>::Device)
-        -> (usize, <back::Backend as Backend>::Buffer, *mut u8, <back::Backend as Backend>::Buffer, *mut u8)
+    unsafe fn create_io_buffers(adapter: &mut Adapter<back::Backend>, device: &<back::Backend as Backend>::Device)
+        -> (u32, u32, <back::Backend as Backend>::Buffer, *mut u8, <back::Backend as Backend>::Buffer, *mut u8)
     {
 
-        let buffer_length: usize = 16384;
-        let buffer_size: usize = mem::size_of::<i32>()*buffer_length;
-        let required_size: usize = 2*buffer_size;
+        let buffer_length: u32 = 16384;
+        let buffer_size: u32 = (mem::size_of::<i32>() as u32)*buffer_length;
+        let required_size: u64 = 2*(buffer_size as u64);
 
-        let mut in_buffer = device.create_buffer(buffer_size, buffer::Usage::Storage).unwrap();
-        let mut out_buffer = device.create_buffer(buffer_size, buffer::Usage::Storage).unwrap();
+        let mut in_buffer = device.create_buffer(buffer_size as u64, buffer::Usage::STORAGE).unwrap();
+        let mut out_buffer = device.create_buffer(buffer_size as u64, buffer::Usage::STORAGE).unwrap();
 
-        let memory_properties = device.memory_properties();
+        let memory_properties = adapter.physical_device.memory_properties();
 
-        let memory_type_id: hal::MemoryTypeId = memory_types
+        let memory_type_id: hal::MemoryTypeId = memory_properties.memory_types
             .iter()
             .position(|mt| {
                 mt
@@ -248,16 +266,16 @@ impl ComputeApplication {
 
         let memory = device.allocate_memory(memory_type_id, required_size as u64).unwrap();
 
-        device.bind_buffer(&memory, 0, &in_buffer).unwrap();
-        device.bind_buffer(&memory, buffer_size, &out_buffer).unwrap();
+        device.bind_buffer_memory(&memory, 0, &mut in_buffer).unwrap();
+        device.bind_buffer_memory(&memory, buffer_size as u64, &mut out_buffer).unwrap();
 
-        let payload = device.map_memory(&memory, 0..buffer_size);
-        let result = device.map_memory(&memory, buffer_size..required_size);
+        let payload = device.map_memory(&memory, (0 as u64)..(buffer_size as u64)).unwrap();
+        let result = device.map_memory(&memory, (buffer_size as u64)..(required_size as u64)).unwrap();
 
-        (buffer_size, in_buffer, payload, out_buffer, result)
+        (buffer_length, buffer_size, in_buffer, payload, out_buffer, result)
     }
 
-    unsafe fn create_compute_pipeline(
+    unsafe fn create_compute_pipeline(buffer_length: u32,
         device: &<back::Backend as Backend>::Device
     ) -> (
         <back::Backend as Backend>::DescriptorSetLayout,
@@ -265,10 +283,10 @@ impl ComputeApplication {
         <back::Backend as Backend>::ComputePipeline,
     ) {
         // eldritch magic
-        let shader_code: Vec<u8> = vec![
+        let spirv_i32: Vec<i32> = vec![
             // first is the SPIR-V header
-            0x07230203, // magic header ID
-            0x00010000, // version 1.0.0
+            0x07230203 as i32, // magic header ID
+            0x00010000 as i32, // version 1.0.0
             0,          // generator (optional)
             BOUND,      // bound
             0,          // schema
@@ -280,7 +298,7 @@ impl ComputeApplication {
             (3 << 16) | OP_MEMORY_MODEL, 0, 0,
 
             // OpEntryPoint GLCompute %FUNC_ID "f" %IN_ID %OUT_ID
-            (4 << 16) | OP_ENTRY_POINT, 5, FUNC_ID, 0x00000066,
+            (4 << 16) | OP_ENTRY_POINT, 5, FUNC_ID, 0x00000066 as i32,
 
             // OpExecutionMode %FUNC_ID LocalSize 1 1 1
             (6 << 16) | OP_EXECUTION_MODE, FUNC_ID, 17, 1, 1, 1,
@@ -310,7 +328,7 @@ impl ComputeApplication {
 
             (4 << 16) | OP_TYPE_INT, INT_TYPE_ID, 32, 1,
 
-            (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID, bufferLength,
+            (4 << 16) | OP_CONSTANT, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID, buffer_length as i32,
 
             (4 << 16) | OP_TYPE_ARRAY, INT_ARRAY_TYPE_ID, INT_TYPE_ID, CONSTANT_ARRAY_LENGTH_ID,
 
@@ -358,6 +376,8 @@ impl ComputeApplication {
             (1 << 16) | OP_FUNCTION_END,
         ];
 
+        let shader_code: Vec<u8> = cast_vec(spirv_i32);
+
         let shader_module = device
             .create_shader_module(&shader_code)
             .expect("Error creating shader module.");
@@ -380,7 +400,7 @@ impl ComputeApplication {
         ];
 
         let descriptor_set_layout = device.create_descriptor_set_layout(descriptor_set_layout_bindings, &[]).unwrap();
-        let pipeline_layout = device.create_pipeline_layout(vec![&descriptor_set_layout], &[]);
+        let pipeline_layout = device.create_pipeline_layout(vec![&descriptor_set_layout], &[]).unwrap();
 
         let shader_entry_point = pso::EntryPoint {
             entry: "f",
@@ -419,12 +439,12 @@ impl ComputeApplication {
     }
 
     unsafe fn set_up_descriptor_sets(
-        device: <back::Backend as Backend>::Device,
-        descriptor_set_layout: <back::Backend as Backend>::DescriptorSetLayout,
-        buffer_size: u64,
+        device: &<back::Backend as Backend>::Device,
+        descriptor_set_layout: &<back::Backend as Backend>::DescriptorSetLayout,
+        buffer_size: u32,
         in_buffer: &<back::Backend as Backend>::Buffer,
         out_buffer: &<back::Backend as Backend>::Buffer,
-    ) {
+    ) -> Vec<<back::Backend as Backend>::DescriptorSet> {
         let descriptor_pool_size = pso::DescriptorRangeDesc {
             ty: pso::DescriptorType::StorageBuffer,
             count: 2,
@@ -432,11 +452,11 @@ impl ComputeApplication {
 
         let descriptor_pool = device.create_descriptor_pool(1, vec![&descriptor_pool_size]).unwrap();
 
-        let descriptor_set = descriptor_pool.allocate_set(&descriptor_set_layout).unwrap();
+        let descriptor_set = descriptor_pool.allocate_set(descriptor_set_layout).unwrap();
 
-        let in_descriptor = hal::pso::Descriptor::Buffer(in_buffer, Some(0)..Some(buffer_size));
+        let in_descriptor = hal::pso::Descriptor::Buffer(in_buffer, Some(0 as u64)..Some(buffer_size as u64));
 
-        let out_descriptor = hal::pso::Descriptor::Buffer(out_buffer, Some(buffer_size)..Some(2*buffer_size));
+        let out_descriptor = hal::pso::Descriptor::Buffer(out_buffer, Some(buffer_size as u64)..Some(2*buffer_size as u64));
 
         // how to know that I should be using Some(descriptor) here, based on docs?
         let in_descriptor_set_write = hal::pso::DescriptorSetWrite {
@@ -454,32 +474,40 @@ impl ComputeApplication {
         };
 
         device.write_descriptor_sets(vec![in_descriptor_set_write, out_descriptor_set_write]);
+
+        vec![descriptor_set]
     }
 
     unsafe fn create_command_buffer<'a>(
-        buffer_size: usize,
+        buffer_size: u32,
         command_pool: &'a mut pool::CommandPool<back::Backend, Compute>,
+        descriptor_sets: &[<back::Backend as Backend>::DescriptorSet],
+        pipeline_layout: &'a <back::Backend as Backend>::PipelineLayout,
         pipeline: &<back::Backend as Backend>::ComputePipeline,
     ) -> command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary>
     {
-        let mut command_buffer: command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary>,
-        > = command_pool.acquire_command_buffer();
+        let mut command_buffer: command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary> = command_pool.acquire_command_buffer();
 
         command_buffer.begin();
         command_buffer.bind_compute_pipeline(pipeline);
-        command_buffer.bind_compute_descriptor_sets(pipeline_layout, vec![descriptor_set_layout], &[]);
+        command_buffer.bind_compute_descriptor_sets(pipeline_layout, 0, descriptor_sets, &[]);
         command_buffer.dispatch([buffer_size/mem::size_of::<i32>() as u32, 1, 1]);
         command_buffer.finish();
 
         command_buffer
     }
 
-    unsafe fn execute_calculation(&mut self) {
-        let submission = queue::Submission {
-            command_buffers: &[self.command_buffer],
-            wait_semaphores: vec![],
-            signal_semaphores: &[],
-        };
+    unsafe fn execute_compute(&mut self) {
+        let submission: queue::Submission<
+            &[command::CommandBuffer<back::Backend, Compute, command::OneShot, command::Primary>],
+            &[<back::Backend as Backend>::Semaphore, pso::PipelineStage],
+            &[<back::Backend as Backend>::Semaphore]> =
+                queue::Submission {
+                    command_buffers: &[self.command_buffer],
+                    wait_semaphores: vec![],
+                    signal_semaphores: vec![],
+                };
+
         let calculation_completed_fence = self.device.create_fence(false).unwrap();
         self.command_queues[0].submit(submission, Some(&calculation_completed_fence));
         self.device.wait_for_fence(&calculation_completed_fence, std::u64::MAX).unwrap();
@@ -487,15 +515,15 @@ impl ComputeApplication {
     }
 
     unsafe fn fill_payload(&mut self) {
-        for j in 0isize..(self.buffer_size/mem::size_of::<i32>()) as isize {
-            ptr::copy(rand::random::<i32>().as_bytes(), self.payload.offset(j), 1);
+        for j in 0isize..(self.buffer_size as isize) {
+            ptr::copy(&rand::random::<u8>(), self.payload.offset(j), 1);
         }
     }
 
     unsafe fn check_result(&self) {
-        for j in 0isize..(self.buffer_size/mem::size_of::<i32>()) as isize {
-            if ptr::read(self.payload.offset(j)) as i32 != ptr::read(self.result.offset(j)) as i32 {
-                println!("Check failed: difference exists between payload and result.")
+        for j in 0isize..(self.buffer_size as isize) {
+            if ptr::read(self.payload.offset(j)) != ptr::read(self.result.offset(j)) {
+                println!("Check failed: difference exists between payload and result.");
                 return;
             }
         }
